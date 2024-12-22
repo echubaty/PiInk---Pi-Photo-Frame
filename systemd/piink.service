@@ -1,0 +1,22 @@
+[Unit]
+Description=Start PiInk
+After=multi-user.target
+
+[Service]
+WorkingDirectory=/home/eric/PiInk/scripts
+
+# Task to run at boot only
+ExecStartPre=/home/eric/PiInk/update_wakeup.sh
+
+# Main service to keep running
+ExecStart=/home/eric/PiInk/entry.sh
+
+# Optional: Ensure service stays running (if entry.sh is a long-running process)
+Restart=always
+RestartSec=3
+
+# Post shutdown task (e.g., a system shutdown in 30 minutes)
+ExecStartPost=sudo shutdown -h +30
+
+[Install]
+WantedBy=multi-user.target

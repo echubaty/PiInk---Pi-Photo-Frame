@@ -1,5 +1,12 @@
 <h1 align="center">PiInk - A Raspberry Pi Powered E-Ink Picture Frame</h1>
 
+#### Echubaty notes
+* Add files to respective folders
+  * /etc/pisugar-server/config.json 
+  * /lib/systemd/system/piink.service
+
+
+
 ![all 3 piinks](https://github.com/tlstommy/PiInk/assets/36305669/9531da45-1ef7-40e7-9d1f-2fef53ca01f3)
 
 
