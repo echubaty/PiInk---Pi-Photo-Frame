@@ -191,7 +191,7 @@ def updateEink(filename,orientation,adjustAR):
         img = adjustAspectRatio(img,adjustAR)    
 
         # Display the image
-        inky_display.set_image(img)
+        inky_display.set_image(img,saturation=1.0)
         inky_display.show()
 
 #clear the screen to prevent ghosting
@@ -229,7 +229,7 @@ def adjustAspectRatio(img,adjustARBool):
             resizedWidth = round(ratioHeight * img.width)
             resizedHeight = h
         imgResized = img.resize((resizedWidth, resizedHeight), Image.LANCZOS)
-        background = Image.new('RGBA', (w, h), (0, 0, 0, 255))
+        background = Image.new('RGBA', (w, h), (255, 255, 255, 255))
 
         #offset image for background and paste the image
         offset = (round((w - resizedWidth) / 2), round((h - resizedHeight) / 2))
