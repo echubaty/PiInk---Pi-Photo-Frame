@@ -6,19 +6,20 @@ config_file="/etc/pisugar-server/config.json"
 # Set the timezone to Pacific Time (PST/PDT) before performing the date calculation
 export TZ="America/Los_Angeles"
 
-# Convert the current_time (ISO 8601 format) to a timestamp
+# Convert the current time (ISO 8601 format) to a timestamp
 current_timestamp=$(date +"%s")
 
-# Extract the current minute
+# Get the current hour and minute
+current_hour=$(date -d "@$current_timestamp" +"%H")
 current_minute=$(date -d "@$current_timestamp" +"%M")
 
-# Calculate the next wake time
-if [ "$current_minute" -lt "58" ]; then
-    # If it's before the 58th minute, set the next time to this hour's 58th minute
-    next_time=$(date -d "@$(( (current_timestamp / 3600) * 3600 + 58 * 60 ))" +"%Y-%m-%dT%H:58:00%:z")
+# Check if current time is between midnight and 5:58 AM
+if [ "$current_hour" -ge "00" ] && [ "$current_hour" -lt "06" ] && [ "$current_minute" -lt "58" ]; then
+    # If it's between midnight and 5:58 AM, set the next wake time to 5:58 AM today
+    next_time=$(date -d "@$(( (current_timestamp / 86400) * 86400 + 5 * 3600 + 58 * 60 ))" +"%Y-%m-%dT05:58:00%:z")
 else
-    # If it's after the 58th minute, set the next wake time to the next hour's 58th minute
-    next_time=$(date -d "@$(( (current_timestamp / 3600 + 1) * 3600 + 58 * 60 ))" +"%Y-%m-%dT%H:58:00%:z")
+    # If it's after 5:58 AM, set the next wake time to the current hour's 58th minute
+    next_time=$(date -d "@$(( (current_timestamp / 3600) * 3600 + 58 * 60 ))" +"%Y-%m-%dT%H:58:00%:z")
 fi
 
 # Update the config.json file with the new auto_wake_time
