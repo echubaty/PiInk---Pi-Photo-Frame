@@ -16,7 +16,7 @@
   "auto_shutdown_delay": null,
   "auto_charging_range": null,
   "full_charge_duration": null,
-  "auto_power_on": true,
+  "auto_power_on": false,
   "soft_poweroff": false,
   "soft_poweroff_shell": "sudo shutdown now",
   "auto_rtc_sync": null,

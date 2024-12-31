@@ -28,10 +28,12 @@ is_shutdown_scheduled() {
     fi
 }
 
-# Function to get the next wake-up time from the config
+# Function to get the next wake-up time from the PiSugar server
 get_next_wakeup_time() {
-    # Get the next scheduled wake-up time from the PiSugar config file
-    next_wakeup_time=$(jq -r '.auto_wake_time' /etc/pisugar-server/config.json)
+    # Get the current scheduled wake-up time from the PiSugar server
+    next_wakeup_time=$(echo "get rtc_alarm" | nc -q 2 127.0.0.1 8423)
+    # Extract the alarm time from the response
+    next_wakeup_time=$(echo $next_wakeup_time | grep -oP 'rtc_alarm: \K.*')
     echo $next_wakeup_time
 }
 
@@ -65,10 +67,10 @@ if is_charging; then
         echo "PiSugar3 is charging. No shutdown scheduled."
     fi
 else
-    # If PiSugar3 is not charging and no shutdown is scheduled, schedule one for 10 minutes
+    # If PiSugar3 is not charging and no shutdown is scheduled, schedule one
     if ! is_shutdown_scheduled; then
-        echo "PiSugar3 is not charging. Scheduling shutdown in 10 minutes..."
-        echo "sudo shutdown -h now" | at now + 10 minutes  # Schedule shutdown in 10 minutes
+        echo "PiSugar3 is not charging. Scheduling shutdown in 5 minutes..."
+        echo "sudo shutdown -h now" | at now + 5 minutes
         bash /home/eric/PiInk/update_wakeup.sh
     else
         echo "Shutdown already scheduled, no action needed."
@@ -79,7 +81,7 @@ fi
 if is_shutdown_after_wakeup; then
     echo "Shutdown is scheduled after the next wake-up time. Postponing the next wake-up by 30 minutes..."
     
-    # Get the current scheduled wake-up time from config
+    # Get the current scheduled wake-up time from PiSugar server
     next_wakeup_time=$(get_next_wakeup_time)
 
     # Add 30 minutes to the next wake-up time
@@ -89,9 +91,8 @@ if is_shutdown_after_wakeup; then
     # Convert the new timestamp to ISO 8601 format
     new_wakeup_time=$(date -d "@$new_wakeup_timestamp" +"%Y-%m-%dT%H:%M:%S%:z")
     
-    # Update the config.json file with the new auto_wake_time
-    jq --arg new_time "$new_wakeup_time" '.auto_wake_time = $new_time' /etc/pisugar-server/config.json > temp_config.json && sudo mv temp_config.json /etc/pisugar-server/config.json
+    # Set the new wake-up time via the PiSugar server
+    echo "rtc_alarm_set $new_wakeup_time 127" | nc -q 2 127.0.0.1 8423
     
-    echo "auto_wake_time updated to $new_wakeup_time"
-    systemctl restart pisugar-server
+    echo "Wake-up time updated to $new_wakeup_time"
 fi
