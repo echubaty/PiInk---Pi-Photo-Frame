@@ -28,13 +28,44 @@ is_shutdown_scheduled() {
     fi
 }
 
-# Function to get the next wake-up time from the PiSugar server
+
 get_next_wakeup_time() {
     # Get the current scheduled wake-up time from the PiSugar server
-    next_wakeup_time=$(echo "get rtc_alarm" | nc -q 2 127.0.0.1 8423)
+    next_wakeup_time=$(echo "get rtc_alarm_time" | nc -q 2 127.0.0.1 8423)
+    
     # Extract the alarm time from the response
-    next_wakeup_time=$(echo $next_wakeup_time | grep -oP 'rtc_alarm: \K.*')
-    echo $next_wakeup_time
+    next_wakeup_time=$(echo $next_wakeup_time | grep -oP 'rtc_alarm_time: \K.*')
+
+    # Parse current date and time
+    current_time=$(date +%Y-%m-%dT%H:%M:%S)
+    
+    # Extract the wake-up time (hour and minute) from the PiSugar server response
+    wake_up_time=$(echo $next_wakeup_time | cut -d'T' -f2 | sed 's/\.[0-9]*//')
+
+    # Get the current time's hour and minute
+    current_hour=$(date +%H)
+    current_minute=$(date +%M)
+
+    # Get the wake-up time's hour and minute
+    wake_up_hour=$(echo $wake_up_time | cut -d':' -f1)
+    wake_up_minute=$(echo $wake_up_time | cut -d':' -f2)
+
+    # Get the current date
+    current_date=$(date +%Y-%m-%d)
+
+    # Compare the current time with the wake-up time to adjust the date
+    if [[ "$current_hour" -gt "$wake_up_hour" ]] || { [[ "$current_hour" -eq "$wake_up_hour" ]] && [[ "$current_minute" -gt "$wake_up_minute" ]]; }; then
+        # If the current time is past the wake-up time, set the wake-up date to tomorrow
+        next_wakeup_date=$(date -d "$current_date + 1 day" +%Y-%m-%d)
+    else
+        # Otherwise, set the wake-up date to today
+        next_wakeup_date=$current_date
+    fi
+    
+    # Combine the corrected date with the wake-up time
+    corrected_wakeup_time="${next_wakeup_date}T${wake_up_time}"
+
+    echo $corrected_wakeup_time
 }
 
 # Function to check if shutdown time is after the next wake-up time
@@ -48,7 +79,7 @@ is_shutdown_after_wakeup() {
     # Convert both the next wake-up time and the shutdown time to timestamps for comparison
     shutdown_timestamp=$(date -d "$shutdown_job_time" +"%s")
     wakeup_timestamp=$(date -d "$next_wakeup_time" +"%s")
-    
+    echo "shutdown time $shutdown_job_time"
     # If shutdown is after the wake-up time, return true
     if [[ "$shutdown_timestamp" -gt "$wakeup_timestamp" ]]; then
         return 0
@@ -69,8 +100,8 @@ if is_charging; then
 else
     # If PiSugar3 is not charging and no shutdown is scheduled, schedule one
     if ! is_shutdown_scheduled; then
-        echo "PiSugar3 is not charging. Scheduling shutdown in 5 minutes..."
-        echo "sudo shutdown -h now" | at now + 5 minutes
+        echo "PiSugar3 is not charging. Scheduling shutdown in 10 minutes..."
+        echo "sudo shutdown -h now" | at now + 10 minutes
         bash /home/eric/PiInk/update_wakeup.sh
     else
         echo "Shutdown already scheduled, no action needed."
@@ -80,13 +111,12 @@ fi
 # Check if shutdown time is after the next wake-up time
 if is_shutdown_after_wakeup; then
     echo "Shutdown is scheduled after the next wake-up time. Postponing the next wake-up by 30 minutes..."
-    
+    #exit 0
     # Get the current scheduled wake-up time from PiSugar server
     next_wakeup_time=$(get_next_wakeup_time)
-
+    echo "next wakeup = $next_wakeup_time"
     # Add 30 minutes to the next wake-up time
-    new_wakeup_timestamp=$(date -d "$next_wakeup_time" +"%s")
-    new_wakeup_timestamp=$((new_wakeup_timestamp + 1800))  # Add 30 minutes (1800 seconds)
+    new_wakeup_timestamp=$(date -d "$next_wakeup_time + 30 minutes" +"%s")
     
     # Convert the new timestamp to ISO 8601 format
     new_wakeup_time=$(date -d "@$new_wakeup_timestamp" +"%Y-%m-%dT%H:%M:%S%:z")
